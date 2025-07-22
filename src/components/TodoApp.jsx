@@ -13,32 +13,35 @@ import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import { GripVertical, Trash2 } from "lucide-react";
 
-// Using your provided JSONBlob ID
-const JSONBLOB_ID = "1397236255732981760";
-const JSONBLOB_URL = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_ID}`;
+const JSONBLOB_IDS = {
+  Masha: "1397236255732981760",
+  Yura: "1397239646651604992"
+};
 
 export default function TodoApp() {
+  const [activeTab, setActiveTab] = useState("Masha");
   const [items, setItems] = useState([]);
   const [inputValue, setInputValue] = useState("");
 
-  // Fetch from JSONBlob on mount
+  const JSONBLOB_URL = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`;
+
   useEffect(() => {
     fetch(JSONBLOB_URL)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setItems(data);
+        else setItems([]);
       })
       .catch(() => {});
-  }, []);
+  }, [activeTab]);
 
-  // Save to JSONBlob whenever items change
   useEffect(() => {
     fetch(JSONBLOB_URL, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(items)
     }).catch(() => {});
-  }, [items]);
+  }, [items, JSONBLOB_URL]);
 
   function addItem() {
     if (!inputValue.trim()) return;
@@ -61,7 +64,30 @@ export default function TodoApp() {
 
   return (
     <main style={{ padding: "1rem", maxWidth: "600px", margin: "0 auto", background: "#1e1e2f", minHeight: "100vh" }}>
-      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem", color: "#fefefe" }}>My To-Do List</h1>
+      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem", color: "#fefefe" }}>MY To-Do Lists</h1>
+
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+        {Object.keys(JSONBLOB_IDS).map((name) => (
+          <button
+            key={name}
+            onClick={() => setActiveTab(name)}
+            style={{
+              padding: "0.5rem 1rem",
+              borderRadius: "8px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: activeTab === name ? "#0070f3" : "#444",
+              color: "white",
+              fontWeight: "bold"
+            }}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+
+      <h2 style={{ color: "#ccc", marginBottom: "0.5rem" }}>{activeTab}'s To-Do List</h2>
+
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
         <input
           style={{ flex: 1, padding: "0.5rem", border: "2px solid #444", borderRadius: "8px", backgroundColor: "#2c2c3a", color: "#fefefe" }}
