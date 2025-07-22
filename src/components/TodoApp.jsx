@@ -25,23 +25,42 @@ export default function TodoApp() {
 
   const JSONBLOB_URL = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`;
 
-  useEffect(() => {
-    fetch(JSONBLOB_URL)
-      .then((res) => res.json())
-      .then((data) => {
+// replace your current useEffects with these:
+
+// fetch on tab change
+useEffect(() => {
+  let cancelled = false;
+  fetch(JSONBLOB_URL)
+    .then((res) => res.json())
+    .then((data) => {
+      if (!cancelled) {
         if (Array.isArray(data)) setItems(data);
         else setItems([]);
-      })
-      .catch(() => {});
-  }, [activeTab]);
+      }
+    })
+    .catch(() => {});
+  return () => {
+    cancelled = true;
+  };
+}, [activeTab]);
 
-  useEffect(() => {
-    fetch(JSONBLOB_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(items)
-    }).catch(() => {});
-  }, [items, JSONBLOB_URL]);
+// save only when items actually change AND only if we have items loaded
+const [loadedOnce, setLoadedOnce] = useState(false);
+useEffect(() => {
+  // mark once data is loaded
+  if (!loadedOnce && items.length >= 0) {
+    setLoadedOnce(true);
+  }
+}, [items, loadedOnce]);
+
+useEffect(() => {
+  if (!loadedOnce) return; // don’t save until initial load is done
+  fetch(JSONBLOB_URL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(items)
+  }).catch(() => {});
+}, [items, JSONBLOB_URL, loadedOnce]);
 
   function addItem() {
     if (!inputValue.trim()) return;
