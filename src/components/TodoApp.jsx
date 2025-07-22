@@ -19,58 +19,45 @@ const JSONBLOB_IDS = {
 };
 
 export default function TodoApp() {
+  const [itemsByTab, setItemsByTab] = useState({ Masha: [], Yura: [] });
   const [activeTab, setActiveTab] = useState("Masha");
-  const [items, setItems] = useState([]);
   const [inputValue, setInputValue] = useState("");
 
-  const JSONBLOB_URL = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`;
+  // Load when tab changes
+  useEffect(() => {
+    fetch(`https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`)
+      .then(res => res.json())
+      .then(data => {
+        setItemsByTab(prev => ({ ...prev, [activeTab]: Array.isArray(data) ? data : [] }));
+      });
+  }, [activeTab]);
 
-// replace your current useEffects with these:
+  // Save only that tab’s items when they change
+  useEffect(() => {
+    fetch(`https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(itemsByTab[activeTab] || [])
+    });
+  }, [itemsByTab[activeTab], activeTab]);
 
-// fetch on tab change
-useEffect(() => {
-  let cancelled = false;
-  fetch(JSONBLOB_URL)
-    .then((res) => res.json())
-    .then((data) => {
-      if (!cancelled) {
-        if (Array.isArray(data)) setItems(data);
-        else setItems([]);
-      }
-    })
-    .catch(() => {});
-  return () => {
-    cancelled = true;
-  };
-}, [activeTab]);
-
-// save only when items actually change AND only if we have items loaded
-const [loadedOnce, setLoadedOnce] = useState(false);
-useEffect(() => {
-  // mark once data is loaded
-  if (!loadedOnce && items.length >= 0) {
-    setLoadedOnce(true);
-  }
-}, [items, loadedOnce]);
-
-useEffect(() => {
-  if (!loadedOnce) return; // don’t save until initial load is done
-  fetch(JSONBLOB_URL, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(items)
-  }).catch(() => {});
-}, [items, JSONBLOB_URL, loadedOnce]);
-
+  // Helper for adding
   function addItem() {
     if (!inputValue.trim()) return;
-    setItems([...items, { id: Date.now().toString(), text: inputValue }]);
+    setItemsByTab(prev => ({
+      ...prev,
+      [activeTab]: [...prev[activeTab], { id: Date.now().toString(), text: inputValue }]
+    }));
     setInputValue("");
   }
 
   function deleteItem(id) {
-    setItems(items.filter((item) => item.id !== id));
+    setItemsByTab(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab].filter(item => item.id !== id)
+    }));
   }
+
 
   function handleDragEnd(event) {
     const { active, over } = event;
@@ -124,9 +111,9 @@ useEffect(() => {
       </div>
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={itemsByTab[activeTab].map((i) => i.id)} strategy={verticalListSortingStrategy}>
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((item) => (
+            {itemsByTab[activeTab]?.map(item => (
               <SortableItem key={item.id} id={item.id} text={item.text} onDelete={() => deleteItem(item.id)} />
             ))}
           </ul>
