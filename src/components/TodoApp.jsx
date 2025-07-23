@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Trash2, Edit3, Check } from "lucide-react";
 
 const JSONBLOB_IDS = {
   Masha: "1397236255732981760",
@@ -24,25 +24,21 @@ export default function TodoApp() {
   const [itemsByTab, setItemsByTab] = useState({ Masha: [], Yura: [], Shared: [] });
   const [loadedTabs, setLoadedTabs] = useState({ Masha: false, Yura: false, Shared: false });
   const [inputValue, setInputValue] = useState("");
+  const [priority, setPriority] = useState("normal");
 
-  // Fetch only when switching to a tab that we haven't loaded yet
   useEffect(() => {
-    if (loadedTabs[activeTab]) return; // already loaded
+    if (loadedTabs[activeTab]) return;
     fetch(`https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setItemsByTab((prev) => ({
-          ...prev,
-          [activeTab]: Array.isArray(data) ? data : []
-        }));
-        setLoadedTabs((prev) => ({ ...prev, [activeTab]: true }));
+      .then(res => res.json())
+      .then(data => {
+        setItemsByTab(prev => ({ ...prev, [activeTab]: Array.isArray(data) ? data : [] }));
+        setLoadedTabs(prev => ({ ...prev, [activeTab]: true }));
       })
       .catch(() => {});
   }, [activeTab, loadedTabs]);
 
-  // Save to the active tab's JSONBlob only when that tab's data changes AND after it has been loaded once
   useEffect(() => {
-    if (!loadedTabs[activeTab]) return; // don't save before initial load
+    if (!loadedTabs[activeTab]) return;
     fetch(`https://jsonblob.com/api/jsonBlob/${JSONBLOB_IDS[activeTab]}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -52,26 +48,51 @@ export default function TodoApp() {
 
   function addItem() {
     if (!inputValue.trim()) return;
-    setItemsByTab((prev) => ({
+    setItemsByTab(prev => ({
       ...prev,
-      [activeTab]: [...prev[activeTab], { id: Date.now().toString(), text: inputValue }]
+      [activeTab]: [
+        ...prev[activeTab],
+        { id: Date.now().toString(), text: inputValue, priority: priority, done: false, editing: false }
+      ]
     }));
     setInputValue("");
+    setPriority("normal");
   }
 
   function deleteItem(id) {
-    setItemsByTab((prev) => ({
+    setItemsByTab(prev => ({
       ...prev,
-      [activeTab]: prev[activeTab].filter((item) => item.id !== id)
+      [activeTab]: prev[activeTab].filter(item => item.id !== id)
+    }));
+  }
+
+  function toggleDone(id) {
+    setItemsByTab(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map(item => item.id === id ? { ...item, done: !item.done } : item)
+    }));
+  }
+
+  function startEdit(id) {
+    setItemsByTab(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map(item => item.id === id ? { ...item, editing: true } : item)
+    }));
+  }
+
+  function saveEdit(id, newText) {
+    setItemsByTab(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map(item => item.id === id ? { ...item, text: newText, editing: false } : item)
     }));
   }
 
   function handleDragEnd(event) {
     const { active, over } = event;
     if (active.id !== over?.id) {
-      const oldIndex = itemsByTab[activeTab].findIndex((i) => i.id === active.id);
-      const newIndex = itemsByTab[activeTab].findIndex((i) => i.id === over.id);
-      setItemsByTab((prev) => ({
+      const oldIndex = itemsByTab[activeTab].findIndex(i => i.id === active.id);
+      const newIndex = itemsByTab[activeTab].findIndex(i => i.id === over.id);
+      setItemsByTab(prev => ({
         ...prev,
         [activeTab]: arrayMove(prev[activeTab], oldIndex, newIndex)
       }));
@@ -80,10 +101,10 @@ export default function TodoApp() {
 
   return (
     <main style={{ padding: "1rem", maxWidth: "600px", margin: "0 auto", background: "#1e1e2f", minHeight: "100vh" }}>
-      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem", color: "#fefefe" }}>Shared To-Do Lists</h1>
+      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem", color: "#fefefe" }}>MY To-Do Lists</h1>
 
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        {Object.keys(JSONBLOB_IDS).map((name) => (
+        {Object.keys(JSONBLOB_IDS).map(name => (
           <button
             key={name}
             onClick={() => setActiveTab(name)}
@@ -104,7 +125,12 @@ export default function TodoApp() {
 
       <h2 style={{ color: "#ccc", marginBottom: "0.5rem" }}>{activeTab}'s To-Do List</h2>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+        <select value={priority} onChange={(e) => setPriority(e.target.value)} style={{ borderRadius: "8px", padding: "0.3rem" }}>
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+        </select>
         <input
           style={{ flex: 1, padding: "0.5rem", border: "2px solid #444", borderRadius: "8px", backgroundColor: "#2c2c3a", color: "#fefefe" }}
           placeholder="Add a new task..."
@@ -121,10 +147,10 @@ export default function TodoApp() {
       </div>
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={itemsByTab[activeTab]?.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={itemsByTab[activeTab]?.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {itemsByTab[activeTab]?.map((item) => (
-              <SortableItem key={item.id} id={item.id} text={item.text} onDelete={() => deleteItem(item.id)} />
+            {itemsByTab[activeTab]?.map(item => (
+              <SortableItem key={item.id} item={item} onDelete={() => deleteItem(item.id)} onToggleDone={() => toggleDone(item.id)} onStartEdit={() => startEdit(item.id)} onSaveEdit={saveEdit} />
             ))}
           </ul>
         </SortableContext>
@@ -133,44 +159,54 @@ export default function TodoApp() {
   );
 }
 
-function SortableItem({ id, text, onDelete }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition
-  };
+function SortableItem({ item, onDelete, onToggleDone, onStartEdit, onSaveEdit }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const priorityColor = item.priority === "high" ? "#ff5555" : item.priority === "low" ? "#4caf50" : "#0070f3";
 
   return (
-    <motion.li
-      ref={setNodeRef}
-      style={{ ...style, marginBottom: "0.5rem" }}
-      layout
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
+    <motion.li ref={setNodeRef} style={{ ...style, marginBottom: "0.5rem" }} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           padding: "0.75rem",
-          border: "1px solid #555",
+          border: `2px solid ${priorityColor}`,
           borderRadius: "8px",
-          background: "#2c2c3a",
-          color: "#fefefe",
+          background: item.done ? "#444" : "#2c2c3a",
+          color: item.done ? "#999" : "#fefefe",
+          textDecoration: item.done ? "line-through" : "none",
           boxShadow: "0 2px 6px rgba(0,0,0,0.4)"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1 }}>
           <button {...attributes} {...listeners} style={{ background: "none", border: "none", cursor: "grab", color: "#aaa" }}>
             <GripVertical size={16} />
           </button>
-          <span>{text}</span>
+          {item.editing ? (
+            <input
+              defaultValue={item.text}
+              onKeyDown={(e) => { if (e.key === 'Enter') onSaveEdit(item.id, e.target.value); }}
+              onBlur={(e) => onSaveEdit(item.id, e.target.value)}
+              autoFocus
+              style={{ flex: 1, background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px" }}
+            />
+          ) : (
+            <span onDoubleClick={onToggleDone} style={{ flex: 1, cursor: "pointer" }}>{item.text}</span>
+          )}
         </div>
-        <button onClick={onDelete} style={{ background: "none", border: "none", color: "#ff5555", cursor: "pointer" }}>
-          <Trash2 size={16} />
-        </button>
+        <div style={{ display: "flex", gap: "0.3rem" }}>
+          <button onClick={onStartEdit} style={{ background: "none", border: "none", color: "#ff0", cursor: "pointer" }}>
+            <Edit3 size={16} />
+          </button>
+          <button onClick={onToggleDone} style={{ background: "none", border: "none", color: "#0f0", cursor: "pointer" }}>
+            <Check size={16} />
+          </button>
+          <button onClick={onDelete} style={{ background: "none", border: "none", color: "#ff5555", cursor: "pointer" }}>
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
     </motion.li>
   );
