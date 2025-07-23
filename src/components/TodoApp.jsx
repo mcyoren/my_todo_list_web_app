@@ -1,4 +1,4 @@
-// src/components/TodoApp.jsx
+// Updated TodoApp.jsx with ability to change priority of an existing item
 "use client";
 
 import { useState, useEffect } from "react";
@@ -87,6 +87,13 @@ export default function TodoApp() {
     }));
   }
 
+  function changePriority(id, newPriority) {
+    setItemsByTab(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab].map(item => item.id === id ? { ...item, priority: newPriority } : item)
+    }));
+  }
+
   function handleDragEnd(event) {
     const { active, over } = event;
     if (active.id !== over?.id) {
@@ -150,7 +157,7 @@ export default function TodoApp() {
         <SortableContext items={itemsByTab[activeTab]?.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {itemsByTab[activeTab]?.map(item => (
-              <SortableItem key={item.id} item={item} onDelete={() => deleteItem(item.id)} onToggleDone={() => toggleDone(item.id)} onStartEdit={() => startEdit(item.id)} onSaveEdit={saveEdit} />
+              <SortableItem key={item.id} item={item} onDelete={() => deleteItem(item.id)} onToggleDone={() => toggleDone(item.id)} onStartEdit={() => startEdit(item.id)} onSaveEdit={saveEdit} onChangePriority={changePriority} />
             ))}
           </ul>
         </SortableContext>
@@ -159,7 +166,7 @@ export default function TodoApp() {
   );
 }
 
-function SortableItem({ item, onDelete, onToggleDone, onStartEdit, onSaveEdit }) {
+function SortableItem({ item, onDelete, onToggleDone, onStartEdit, onSaveEdit, onChangePriority }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const priorityColor = item.priority === "high" ? "#ff5555" : item.priority === "low" ? "#4caf50" : "#0070f3";
@@ -177,36 +184,38 @@ function SortableItem({ item, onDelete, onToggleDone, onStartEdit, onSaveEdit })
           background: item.done ? "#444" : "#2c2c3a",
           color: item.done ? "#999" : "#fefefe",
           textDecoration: item.done ? "line-through" : "none",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.4)"
+          boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+          gap: "0.5rem"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1 }}>
-          <button {...attributes} {...listeners} style={{ background: "none", border: "none", cursor: "grab", color: "#aaa" }}>
-            <GripVertical size={16} />
-          </button>
-          {item.editing ? (
-            <input
-              defaultValue={item.text}
-              onKeyDown={(e) => { if (e.key === 'Enter') onSaveEdit(item.id, e.target.value); }}
-              onBlur={(e) => onSaveEdit(item.id, e.target.value)}
-              autoFocus
-              style={{ flex: 1, background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px" }}
-            />
-          ) : (
-            <span onDoubleClick={onToggleDone} style={{ flex: 1, cursor: "pointer" }}>{item.text}</span>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: "0.3rem" }}>
-          <button onClick={onStartEdit} style={{ background: "none", border: "none", color: "#ff0", cursor: "pointer" }}>
-            <Edit3 size={16} />
-          </button>
-          <button onClick={onToggleDone} style={{ background: "none", border: "none", color: "#0f0", cursor: "pointer" }}>
-            <Check size={16} />
-          </button>
-          <button onClick={onDelete} style={{ background: "none", border: "none", color: "#ff5555", cursor: "pointer" }}>
-            <Trash2 size={16} />
-          </button>
-        </div>
+        <button {...attributes} {...listeners} style={{ background: "none", border: "none", cursor: "grab", color: "#aaa" }}>
+          <GripVertical size={16} />
+        </button>
+        {item.editing ? (
+          <input
+            defaultValue={item.text}
+            onKeyDown={(e) => { if (e.key === 'Enter') onSaveEdit(item.id, e.target.value); }}
+            onBlur={(e) => onSaveEdit(item.id, e.target.value)}
+            autoFocus
+            style={{ flex: 1, background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px" }}
+          />
+        ) : (
+          <span onDoubleClick={onToggleDone} style={{ flex: 1, cursor: "pointer" }}>{item.text}</span>
+        )}
+        <select value={item.priority} onChange={(e) => onChangePriority(item.id, e.target.value)} style={{ borderRadius: "4px" }}>
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+        </select>
+        <button onClick={onStartEdit} style={{ background: "none", border: "none", color: "#ff0", cursor: "pointer" }}>
+          <Edit3 size={16} />
+        </button>
+        <button onClick={onToggleDone} style={{ background: "none", border: "none", color: "#0f0", cursor: "pointer" }}>
+          <Check size={16} />
+        </button>
+        <button onClick={onDelete} style={{ background: "none", border: "none", color: "#ff5555", cursor: "pointer" }}>
+          <Trash2 size={16} />
+        </button>
       </div>
     </motion.li>
   );
