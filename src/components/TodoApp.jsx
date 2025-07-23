@@ -1,4 +1,4 @@
-// Updated TodoApp.jsx with ability to change priority of an existing item
+// Updated TodoApp.jsx with category support
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,8 +19,11 @@ const JSONBLOB_IDS = {
   Shared: "1397637105034911744"
 };
 
+const categories = ["Personal", "Science", "Household", "Health"];
+
 export default function TodoApp() {
   const [activeTab, setActiveTab] = useState("Masha");
+  const [activeCategory, setActiveCategory] = useState("Personal");
   const [itemsByTab, setItemsByTab] = useState({ Masha: [], Yura: [], Shared: [] });
   const [loadedTabs, setLoadedTabs] = useState({ Masha: false, Yura: false, Shared: false });
   const [inputValue, setInputValue] = useState("");
@@ -52,7 +55,14 @@ export default function TodoApp() {
       ...prev,
       [activeTab]: [
         ...prev[activeTab],
-        { id: Date.now().toString(), text: inputValue, priority: priority, done: false, editing: false }
+        {
+          id: Date.now().toString(),
+          text: inputValue,
+          priority: priority,
+          done: false,
+          editing: false,
+          category: activeCategory
+        }
       ]
     }));
     setInputValue("");
@@ -99,12 +109,23 @@ export default function TodoApp() {
     if (active.id !== over?.id) {
       const oldIndex = itemsByTab[activeTab].findIndex(i => i.id === active.id);
       const newIndex = itemsByTab[activeTab].findIndex(i => i.id === over.id);
-      setItemsByTab(prev => ({
-        ...prev,
-        [activeTab]: arrayMove(prev[activeTab], oldIndex, newIndex)
-      }));
+      const filtered = itemsByTab[activeTab].filter(i => i.category === activeCategory);
+      // reorder only within category
+      const ids = filtered.map(i => i.id);
+      const oldFilteredIndex = ids.indexOf(active.id);
+      const newFilteredIndex = ids.indexOf(over.id);
+      if (oldFilteredIndex > -1 && newFilteredIndex > -1) {
+        const reordered = arrayMove(filtered, oldFilteredIndex, newFilteredIndex);
+        const rest = itemsByTab[activeTab].filter(i => i.category !== activeCategory);
+        setItemsByTab(prev => ({
+          ...prev,
+          [activeTab]: [...rest, ...reordered]
+        }));
+      }
     }
   }
+
+  const filteredItems = itemsByTab[activeTab].filter(item => item.category === activeCategory);
 
   return (
     <main style={{ padding: "1rem", maxWidth: "600px", margin: "0 auto", background: "#1e1e2f", minHeight: "100vh" }}>
@@ -130,7 +151,27 @@ export default function TodoApp() {
         ))}
       </div>
 
-      <h2 style={{ color: "#ccc", marginBottom: "0.5rem" }}>{activeTab}'s To-Do List</h2>
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+        {categories.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            style={{
+              padding: "0.3rem 0.6rem",
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: activeCategory === cat ? "#00b894" : "#555",
+              color: "white",
+              fontWeight: "bold"
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <h2 style={{ color: "#ccc", marginBottom: "0.5rem" }}>{activeTab} - {activeCategory}</h2>
 
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
         <select value={priority} onChange={(e) => setPriority(e.target.value)} style={{ borderRadius: "8px", padding: "0.3rem" }}>
@@ -154,9 +195,9 @@ export default function TodoApp() {
       </div>
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={itemsByTab[activeTab]?.map(i => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={filteredItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {itemsByTab[activeTab]?.map(item => (
+            {filteredItems.map(item => (
               <SortableItem key={item.id} item={item} onDelete={() => deleteItem(item.id)} onToggleDone={() => toggleDone(item.id)} onStartEdit={() => startEdit(item.id)} onSaveEdit={saveEdit} onChangePriority={changePriority} />
             ))}
           </ul>
