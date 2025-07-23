@@ -15,13 +15,14 @@ import { GripVertical, Trash2 } from "lucide-react";
 
 const JSONBLOB_IDS = {
   Masha: "1397236255732981760",
-  Yura: "1397239646651604992"
+  Yura: "1397239646651604992",
+  Shared: "1397637105034911744"
 };
 
 export default function TodoApp() {
   const [activeTab, setActiveTab] = useState("Masha");
-  const [itemsByTab, setItemsByTab] = useState({ Masha: [], Yura: [] });
-  const [loadedTabs, setLoadedTabs] = useState({ Masha: false, Yura: false });
+  const [itemsByTab, setItemsByTab] = useState({ Masha: [], Yura: [], Shared: [] });
+  const [loadedTabs, setLoadedTabs] = useState({ Masha: false, Yura: false, Shared: false });
   const [inputValue, setInputValue] = useState("");
 
   // Fetch only when switching to a tab that we haven't loaded yet
@@ -36,7 +37,7 @@ export default function TodoApp() {
         }));
         setLoadedTabs((prev) => ({ ...prev, [activeTab]: true }));
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [activeTab, loadedTabs]);
 
   // Save to the active tab's JSONBlob only when that tab's data changes AND after it has been loaded once
@@ -46,7 +47,7 @@ export default function TodoApp() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(itemsByTab[activeTab])
-    }).catch(() => { });
+    }).catch(() => {});
   }, [itemsByTab, activeTab, loadedTabs]);
 
   function addItem() {
@@ -79,7 +80,7 @@ export default function TodoApp() {
 
   return (
     <main style={{ padding: "1rem", maxWidth: "600px", margin: "0 auto", background: "#1e1e2f", minHeight: "100vh" }}>
-      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem", color: "#fefefe" }}>MY To-Do Lists</h1>
+      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem", color: "#fefefe" }}>Shared To-Do Lists</h1>
 
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
         {Object.keys(JSONBLOB_IDS).map((name) => (
